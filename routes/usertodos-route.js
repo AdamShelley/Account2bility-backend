@@ -1,0 +1,19 @@
+const express = require("express");
+
+const router = express.Router();
+
+const userTodos = require("../controllers/usertodos-controllers");
+
+router.get("/", userTodos.getUsers);
+router.get("/:uid", userTodos.getUserById);
+router.get("/:uid/goals", userTodos.getGoalsByUserId);
+router.post("/signup", userTodos.signup);
+router.post("/login", userTodos.login);
+router.post("/newgoal", userTodos.newGoal);
+router.patch("/:uid", userTodos.registerPartner);
+router.delete("/:uid", userTodos.deleteUser);
+router.delete("/:uid/goals", userTodos.deleteAllGoals);
+router.delete("/goals/:gid", userTodos.deleteSingleGoal);
+router.delete("/:uid/partner", userTodos.deleteConnection);
+
+module.exports = router;
