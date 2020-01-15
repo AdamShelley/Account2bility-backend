@@ -4,8 +4,6 @@ const mongoose = require("mongoose");
 const Todo = require("../models/todo");
 const User = require("../models/user");
 
-const TEST_USER = "5e1b58435f1d5e2795c786f7";
-
 // @DESC    Get all users
 // @TYPE    GET
 // @ROUTES  /api/v1/users/
@@ -105,7 +103,7 @@ const login = async (req, res, next) => {
     const error = new HttpError("Invalid credentials. Could not log in", 401);
     return next(error);
   }
-  res.json({ message: "Logged in!" });
+  res.json({ message: "Logged in!", user: existingUser });
 };
 
 // @DESC    Register partner to current user
@@ -171,9 +169,10 @@ const newGoal = async (req, res, next) => {
   // const userId = req.params.uid;
   const { title, description, deadline, status, creator } = req.body;
 
+  console.log(creator);
   let user;
   try {
-    user = await User.findOne({ email: creator });
+    user = await User.findById(creator);
   } catch (err) {
     const error = new HttpError("Could not find a user, please try again", 500);
     return next(error);
@@ -190,7 +189,7 @@ const newGoal = async (req, res, next) => {
     description,
     deadline,
     status,
-    creator: mongoose.Types.ObjectId(`${TEST_USER}`),
+    creator: mongoose.Types.ObjectId(creator),
     actions: []
   });
 
@@ -219,6 +218,7 @@ const newGoal = async (req, res, next) => {
 const getGoalsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
+  console.log(userId);
   // Find the user in the db
   let actions;
   try {
@@ -233,8 +233,6 @@ const getGoalsByUserId = async (req, res, next) => {
     const error = new HttpError("Could not find a user. Try again", 500);
     return next(error);
   }
-
-  console.log(actions);
 
   res.status(200).json({
     success: true,

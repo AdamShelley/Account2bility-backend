@@ -115,7 +115,8 @@ const createAction = async (req, res, next) => {
     todoId,
     action,
     creator: userId,
-    partner: partner._id
+    partner: partner._id,
+    response: ""
   });
 
   // Find todo by ID
@@ -159,6 +160,88 @@ const createAction = async (req, res, next) => {
   res.status(200).json({ success: true, data: user });
 };
 
+// @DESC    Send accept/reject response to partner
+// @TYPE    PUT
+// @ROUTES  /api/v1/actions/:aid
+// PRIVATE
+const actionResponseHandler = async (req, res, next) => {
+  const actionId = req.params.aid;
+
+  const { actionResponse } = req.body;
+  console.log(actionResponse);
+  // Check the action response is valid
+
+  if (!actionResponse === "accept" || !actionResponse === "reject") {
+    const error = new HttpError(
+      "Invalid response. Either accept or reject.",
+      404
+    );
+    return next(error);
+  }
+
+  // Fetch the action and update its response
+  let action;
+  try {
+    action = await Action.findById(actionId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find the action. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  if (!action) {
+    const error = new HttpError(
+      "Could not find the action. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  // Fetch the todo and update the result.
+
+  let todo;
+  try {
+    todo = await Todo.findById(action.todoId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find the todo associated with this action. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  if (!todo) {
+    const error = new HttpError(
+      "Could not find the todo associated with this action. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await action.save({ session: sess });
+    await todo.save({ session: sess });
+    action.response = actionResponse;
+    todo.status = true;
+    await action.save({ session: sess });
+    await todo.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Could not update the goal. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ success: true, action: action, todo: todo });
+};
+
 exports.getActionsByUserId = getActionsByUserId;
 exports.getGoalByActionId = getGoalByActionId;
 exports.createAction = createAction;
+exports.actionResponseHandler = actionResponseHandler;

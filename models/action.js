@@ -12,6 +12,10 @@ const actionSchema = new Schema({
     type: String,
     required: true
   },
+  response: {
+    type: String,
+    required: false
+  },
   creator: {
     type: mongoose.Types.ObjectId,
     required: true,
