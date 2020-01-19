@@ -3,6 +3,7 @@ const HttpError = require("../models/HttpError");
 const mongoose = require("mongoose");
 const Todo = require("../models/todo");
 const User = require("../models/user");
+const Action = require("../models/action");
 
 // @DESC    Get all users
 // @TYPE    GET
@@ -103,7 +104,26 @@ const login = async (req, res, next) => {
     const error = new HttpError("Invalid credentials. Could not log in", 401);
     return next(error);
   }
-  res.json({ message: "Logged in!", user: existingUser });
+
+  // Find the partner ID
+  let partner;
+  try {
+    partner = await User.findOne({ email: existingUser.partner }).populate(
+      "todos"
+    );
+  } catch (err) {
+    const error = new HttpError(
+      "Issues with logging in. Please try again.",
+      404
+    );
+    return next(error);
+  }
+
+  res.json({
+    message: "Logged in!",
+    user: existingUser,
+    partner: partner || "None"
+  });
 };
 
 // @DESC    Register partner to current user
@@ -281,36 +301,98 @@ const deleteUser = async (req, res, next) => {
 
 // @DESC    Delete single goal
 // @TYPE    DELETE
-// @ROUTES  /api/v1/users/:uid/goal/:gid
+// @ROUTES  /api/v1/users/:uid/goal/
 // PRIVATE
 const deleteSingleGoal = async (req, res, next) => {
-  const goalId = req.params.gid;
+  const { goalId, userId } = req.body;
 
+  // Get the user
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError("Cannot find user. Please try again", 404);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Cannot find user. Please try again", 404);
+    return next(error);
+  }
+
+  // Find the goal
   let goal;
   try {
-    goal = await Todo.findById(goalId).populate("creator");
+    goal = await Todo.findById(goalId);
   } catch (err) {
-    const error = new HttpError("Could not find goal. Deleting failed", 500);
+    const error = new HttpError("Cannot delete goal. Please try again", 404);
     return next(error);
   }
 
   if (!goal) {
-    const error = new HttpError("Could not find a goal for this ID", 404);
+    const error = new HttpError("Cannot delete goal. Please try again", 404);
+    return next(error);
+  }
+
+  // Find partner
+  let partner;
+  try {
+    partner = await User.findOne({ email: user.partner });
+  } catch (err) {
+    const error = new HttpError("Cannot find a user with this goal", 404);
+    return next(error);
+  }
+
+  if (!partner) {
+    const error = new HttpError("Cannot find a user with this goal", 404);
+    return next(error);
+  }
+
+  // Any actions that are part of the goal
+  let action;
+  try {
+    action = await Action.findOne({ todoId: goalId });
+  } catch (err) {
+    const error = new HttpError(
+      "Failed to find any actions attributed to this goal",
+      404
+    );
+    return next(error);
+  }
+
+  if (!action) {
+    const error = new HttpError(
+      "Failed to find any actions attributed to this goal",
+      404
+    );
+    return next(error);
+  }
+
+  try {
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError("Cannot delete goal. Please try again", 404);
     return next(error);
   }
 
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await goal.remove({ session: sess });
-    goal.creator.todos.pull(goal);
-    await goal.creator.save({ session: sess });
+    // await user.remove({ session: sess });
+    await action.remove({ session: sess });
+    // await partner.remove({ session: sess });
+    user.todos.pull(goal);
+    partner.actions.pull(action);
+    await user.save({ session: sess });
+    await partner.save({ session: sess });
     sess.commitTransaction();
   } catch (err) {
-    const error = new HttpError("Something went wrong. Deleting failed", 500);
+    console.log(err);
+    const error = new HttpError("Cannot delete goal. Please try again", 404);
     return next(error);
   }
-  res.status(200).json({ success: true });
+
+  res.status(200).json({ user: user, partner: partner });
 };
 
 // @DESC    Delete all goals

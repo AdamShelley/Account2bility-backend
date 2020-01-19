@@ -11,9 +11,9 @@ router.post("/signup", userTodos.signup);
 router.post("/login", userTodos.login);
 router.post("/newgoal", userTodos.newGoal);
 router.patch("/:uid", userTodos.registerPartner);
+router.delete("/goals", userTodos.deleteSingleGoal);
 router.delete("/:uid", userTodos.deleteUser);
 router.delete("/:uid/goals", userTodos.deleteAllGoals);
-router.delete("/goals/:gid", userTodos.deleteSingleGoal);
 router.delete("/:uid/partner", userTodos.deleteConnection);
 
 module.exports = router;

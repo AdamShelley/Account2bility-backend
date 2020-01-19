@@ -81,9 +81,24 @@ const getGoalByActionId = async (req, res, next) => {
 // PRIVATE
 const createAction = async (req, res, next) => {
   // Find user
-  const userId = req.params.uid;
+  // const userId = req.params.uid;
 
-  const { todoId, action } = req.body;
+  const { userId, todoId, action } = req.body;
+
+  // Check if action has already been requested
+
+  let actionId;
+  try {
+    actionId = await Todo.findOne({ todoId: todoId });
+  } catch (err) {
+    const error = new HttpError("An action already exists for this goal.", 402);
+    return next(error);
+  }
+
+  // if (actionId) {
+  //   const error = new HttpError("The action could not be found.", 402);
+  //   return next(error);
+  // }
 
   let user;
   try {
@@ -112,10 +127,10 @@ const createAction = async (req, res, next) => {
   }
 
   const createdAction = new Action({
-    todoId,
+    todoId: mongoose.Types.ObjectId(todoId),
     action,
-    creator: userId,
-    partner: partner._id,
+    creator: mongoose.Types.ObjectId(userId),
+    partner: mongoose.Types.ObjectId(partner._id),
     response: ""
   });
 
@@ -139,11 +154,20 @@ const createAction = async (req, res, next) => {
     return next(error);
   }
 
+  if (todo.status) {
+    const error = new HttpError(
+      "The goal already has an action attributed to this.",
+      500
+    );
+    return next(error);
+  }
+
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await createdAction.save({ session: sess });
     partner.actions.push(createdAction);
+    todo.status = true;
     todo.actions.push(createdAction);
     await partner.save({ session: sess });
     await todo.save({ session: sess });
@@ -179,7 +203,6 @@ const actionResponseHandler = async (req, res, next) => {
     return next(error);
   }
 
-  // Fetch the action and update its response
   let action;
   try {
     action = await Action.findById(actionId);
@@ -220,28 +243,59 @@ const actionResponseHandler = async (req, res, next) => {
     return next(error);
   }
 
-  try {
-    const sess = await mongoose.startSession();
-    sess.startTransaction();
-    await action.save({ session: sess });
-    await todo.save({ session: sess });
-    action.response = actionResponse;
-    todo.status = true;
-    await action.save({ session: sess });
-    await todo.save({ session: sess });
-    await sess.commitTransaction();
-  } catch (err) {
-    const error = new HttpError(
-      "Could not update the goal. Please try again",
-      404
-    );
-    return next(error);
+  // Fetch the action and update its response
+  // If accept
+  if (actionResponse === "accept") {
+    try {
+      const sess = await mongoose.startSession();
+      sess.startTransaction();
+      await action.save({ session: sess });
+      await todo.save({ session: sess });
+      action.response = actionResponse;
+      todo.status = true;
+      await action.save({ session: sess });
+      await todo.save({ session: sess });
+      await sess.commitTransaction();
+    } catch (err) {
+      const error = new HttpError(
+        "Could not update the goal. Please try again",
+        404
+      );
+      return next(error);
+    }
+  } else if (actionResponse === "reject") {
+    console.log("Hit reject");
   }
 
   res.status(200).json({ success: true, action: action, todo: todo });
+};
+
+// @DESC    Cleanup actions
+// @TYPE    DELETE
+// @ROUTES  /api/v1/actions/null
+// PRIVATE
+
+const deleteNullActions = async (req, res, next) => {
+  let actions;
+  try {
+    actions = await Action.find({});
+  } catch (err) {
+    const error = new HttpError("Could not delete all NULL actions.", 404);
+    return next(error);
+  }
+
+  if (!actions) {
+    const error = new HttpError("Could not delete all NULL actions.", 404);
+    return next(error);
+  }
+
+  res
+    .status(200)
+    .json({ success: true, msg: "all null actions deleted", actions: actions });
 };
 
 exports.getActionsByUserId = getActionsByUserId;
 exports.getGoalByActionId = getGoalByActionId;
 exports.createAction = createAction;
 exports.actionResponseHandler = actionResponseHandler;
+exports.deleteNullActions = deleteNullActions;
