@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const userTodos = require("./routes/usertodos-route");
 const actionList = require("./routes/actionlist-route");
 const partnerTodos = require("./routes/partnertodos-route");
+const history = require("./routes/history-route");
 const mongoose = require("mongoose");
 const HttpError = require("./models/HttpError");
 
@@ -23,6 +24,7 @@ app.use((req, res, next) => {
 app.use("/api/v1/users", userTodos);
 app.use("/api/v1/partner", partnerTodos);
 app.use("/api/v1/actions", actionList);
+app.use("/api/v1/history", history);
 
 app.use((req, res, next) => {
   const error = new HttpError("Could not find this route.", 404);
@@ -41,7 +43,7 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(
-    "mongodb+srv://guinlord26:Simplicity26@account2bility-xiurg.mongodb.net/goals?retryWrites=true&w=majority",
+    `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@account2bility-xiurg.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`,
     {
       useNewUrlParser: true,
       useUnifiedTopology: true,

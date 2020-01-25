@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const Todo = require("../models/todo");
 const User = require("../models/user");
 const Action = require("../models/action");
+const History = require("../models/history");
 
 // @DESC    Get all actions for a specific user
 // @TYPE    GET
@@ -191,7 +192,7 @@ const createAction = async (req, res, next) => {
 const actionResponseHandler = async (req, res, next) => {
   const actionId = req.params.aid;
 
-  const { actionResponse } = req.body;
+  const { actionResponse, userId } = req.body;
   console.log(actionResponse);
   // Check the action response is valid
 
@@ -222,6 +223,14 @@ const actionResponseHandler = async (req, res, next) => {
     return next(error);
   }
 
+  if (action.response === "accept" || action.response === "reject") {
+    const error = new HttpError(
+      "Action already has a response attributed to it.",
+      404
+    );
+    return next(error);
+  }
+
   // Fetch the todo and update the result.
 
   let todo;
@@ -243,28 +252,47 @@ const actionResponseHandler = async (req, res, next) => {
     return next(error);
   }
 
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find the todo associated with this user. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError(
+      "Could not find the todo associated with this user. Please try again",
+      404
+    );
+    return next(error);
+  }
+
   // Fetch the action and update its response
   // If accept
-  if (actionResponse === "accept") {
-    try {
-      const sess = await mongoose.startSession();
-      sess.startTransaction();
-      await action.save({ session: sess });
-      await todo.save({ session: sess });
-      action.response = actionResponse;
-      todo.status = true;
-      await action.save({ session: sess });
-      await todo.save({ session: sess });
-      await sess.commitTransaction();
-    } catch (err) {
-      const error = new HttpError(
-        "Could not update the goal. Please try again",
-        404
-      );
-      return next(error);
-    }
-  } else if (actionResponse === "reject") {
-    console.log("Hit reject");
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await action.save({ session: sess });
+    await todo.save({ session: sess });
+    action.response = actionResponse;
+    todo.status = true;
+    todo.actionReceived = true;
+    todo.proceed = actionResponse;
+    user.history.push(todo);
+    await action.save({ session: sess });
+    await todo.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Could not update the goal. Please try again",
+      404
+    );
+    return next(error);
   }
 
   res.status(200).json({ success: true, action: action, todo: todo });

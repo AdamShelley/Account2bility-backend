@@ -18,10 +18,6 @@ const userSchema = new Schema({
     required: true,
     minlength: 6
   },
-  image: {
-    type: String,
-    required: true
-  },
   partner: {
     type: String
   },
@@ -37,6 +33,13 @@ const userSchema = new Schema({
       type: mongoose.Types.ObjectId,
       required: false,
       ref: "Action"
+    }
+  ],
+  history: [
+    {
+      type: mongoose.Types.ObjectId,
+      required: false,
+      ref: "History"
     }
   ]
 });

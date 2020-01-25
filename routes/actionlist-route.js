@@ -6,7 +6,7 @@ const actionList = require("../controllers/actionlist-controller");
 
 router.get("/goal/:aid", actionList.getGoalByActionId);
 router.get("/:uid", actionList.getActionsByUserId);
-router.put("/:aid", actionList.actionResponseHandler);
+router.patch("/:aid", actionList.actionResponseHandler);
 router.post("/", actionList.createAction);
 router.delete("/null", actionList.deleteNullActions);
 

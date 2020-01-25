@@ -29,7 +29,16 @@ const todoSchema = new Schema({
       type: mongoose.Types.ObjectId,
       ref: "Action"
     }
-  ]
+  ],
+  actionReceived: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+  proceed: {
+    type: String,
+    required: false
+  }
 });
 
 module.exports = mongoose.model("Todo", todoSchema);

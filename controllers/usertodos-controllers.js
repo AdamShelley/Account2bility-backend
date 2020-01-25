@@ -1,4 +1,6 @@
 const uuid = require("uuid/v4");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const HttpError = require("../models/HttpError");
 const mongoose = require("mongoose");
 const Todo = require("../models/todo");
@@ -46,7 +48,7 @@ const getUserById = async (req, res, next) => {
 // @ROUTES  /api/v1/users/signup
 // PRIVATE
 const signup = async (req, res, next) => {
-  const { name, email, password, image } = req.body;
+  const { name, email, password } = req.body;
 
   // Check if user email exists
   let existingUser;
@@ -65,12 +67,18 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    const error = new HttpError("Could not create user. Please try again", 500);
+    return next(error);
+  }
+
   const newUser = new User({
     name,
     email,
-    password,
-    image:
-      "https://images.pexels.com/photos/574071/pexels-photo-574071.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    password: hashedPassword,
     todos: [],
     partner: ""
   });
@@ -83,7 +91,25 @@ const signup = async (req, res, next) => {
     return next(err);
   }
 
-  res.status(200).json({ success: true, data: newUser });
+  // jwt
+  let token;
+  try {
+    token = jwt.sign(
+      { userId: createdUser.id, email: createdUser.email },
+      "secret_token",
+      { expiresIn: "1h" }
+    );
+  } catch (err) {
+    const error = new HttpError("Signing up failed, please try again", 500);
+    return next(error);
+  }
+
+  res.status(200).json({
+    success: true,
+    userId: createdUser.id,
+    email: createdUser.email,
+    token: token
+  });
 };
 
 // @DESC    LOGIN
@@ -100,8 +126,21 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
-  if (!existingUser || existingUser.password !== password) {
+  if (!existingUser) {
     const error = new HttpError("Invalid credentials. Could not log in", 401);
+    return next(error);
+  }
+
+  let isValidPassword = false;
+  try {
+    isValidPassword = await bcrypt.compare(password, existingUser.password);
+  } catch (err) {
+    const error = new HttpError("Invalid credentials. Could not log in", 500);
+    return next(error);
+  }
+
+  if (!isValidPassword) {
+    const error = new HttpError("Invalid credentials. Could not log in", 500);
     return next(error);
   }
 
@@ -114,15 +153,33 @@ const login = async (req, res, next) => {
   } catch (err) {
     const error = new HttpError(
       "Issues with logging in. Please try again.",
-      404
+      401
+    );
+    return next(error);
+  }
+
+  // jwt
+  let token;
+  try {
+    token = jwt.sign(
+      { userId: existingUser.id, email: existingUser.email },
+      "secret_token",
+      { expiresIn: "1h" }
+    );
+  } catch (err) {
+    const error = new HttpError(
+      "Issues with logging in. Please try again.",
+      401
     );
     return next(error);
   }
 
   res.json({
-    message: "Logged in!",
-    user: existingUser,
-    partner: partner || "None"
+    partner: partner || "None",
+    userId: existingUser.id,
+    email: existingUser.email,
+    name: existingUser.name,
+    token: token
   });
 };
 
@@ -186,6 +243,7 @@ const registerPartner = async (req, res, next) => {
 // @ROUTES  /api/v1/users/newgoal
 // PRIVATE
 const newGoal = async (req, res, next) => {
+  console.log("New goal route");
   // const userId = req.params.uid;
   const { title, description, deadline, status, creator } = req.body;
 
@@ -210,7 +268,8 @@ const newGoal = async (req, res, next) => {
     deadline,
     status,
     creator: mongoose.Types.ObjectId(creator),
-    actions: []
+    actions: [],
+    history: []
   });
 
   try {
