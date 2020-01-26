@@ -1,0 +1,8 @@
+{
+  "env": {
+    "DB_USER": "guinlord26",
+    "DB_PASSWORD": "Simplicity26",
+    "DB_NAME": "goals",
+    "JWT_KEY": "secret_token"
+  }
+}

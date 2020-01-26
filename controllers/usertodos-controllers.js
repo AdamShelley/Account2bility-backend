@@ -80,7 +80,9 @@ const signup = async (req, res, next) => {
     email,
     password: hashedPassword,
     todos: [],
-    partner: ""
+    partner: "",
+    image:
+      "https://images.pexels.com/photos/1091290/pexels-photo-1091290.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
   });
 
   try {
@@ -96,7 +98,7 @@ const signup = async (req, res, next) => {
   try {
     token = jwt.sign(
       { userId: createdUser.id, email: createdUser.email },
-      "secret_token",
+      process.env.JWT_KEY,
       { expiresIn: "1h" }
     );
   } catch (err) {
@@ -163,7 +165,7 @@ const login = async (req, res, next) => {
   try {
     token = jwt.sign(
       { userId: existingUser.id, email: existingUser.email },
-      "secret_token",
+      proces.env.KEY,
       { expiresIn: "1h" }
     );
   } catch (err) {
@@ -179,7 +181,8 @@ const login = async (req, res, next) => {
     userId: existingUser.id,
     email: existingUser.email,
     name: existingUser.name,
-    token: token
+    token: token,
+    image: existingUser.image || null
   });
 };
 
@@ -299,23 +302,23 @@ const getGoalsByUserId = async (req, res, next) => {
 
   console.log(userId);
   // Find the user in the db
-  let actions;
+  let goals;
   try {
-    actions = await Todo.find({ creator: userId });
-    console.log(actions);
+    goals = await Todo.find({ creator: userId, actionReceived: false });
+    console.log(goals);
   } catch (err) {
     const error = new HttpError("Could not find a user. Try again", 500);
     return next(error);
   }
 
-  if (!actions) {
+  if (!goals) {
     const error = new HttpError("Could not find a user. Try again", 500);
     return next(error);
   }
 
   res.status(200).json({
     success: true,
-    data: actions.map(action => action.toObject({ getters: true }))
+    data: goals
   });
 };
 

@@ -192,7 +192,7 @@ const createAction = async (req, res, next) => {
 const actionResponseHandler = async (req, res, next) => {
   const actionId = req.params.aid;
 
-  const { actionResponse, userId } = req.body;
+  const { actionResponse, partnerId } = req.body;
   console.log(actionResponse);
   // Check the action response is valid
 
@@ -254,7 +254,7 @@ const actionResponseHandler = async (req, res, next) => {
 
   let user;
   try {
-    user = await User.findById(userId);
+    user = await User.findById(partnerId);
   } catch (err) {
     const error = new HttpError(
       "Could not find the todo associated with this user. Please try again",
@@ -279,13 +279,16 @@ const actionResponseHandler = async (req, res, next) => {
     sess.startTransaction();
     await action.save({ session: sess });
     await todo.save({ session: sess });
+    await user.save({ session: sess });
     action.response = actionResponse;
     todo.status = true;
     todo.actionReceived = true;
     todo.proceed = actionResponse;
+    user.todos.pull(todo);
     user.history.push(todo);
     await action.save({ session: sess });
     await todo.save({ session: sess });
+    await user.save({ session: sess });
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
