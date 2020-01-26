@@ -152,13 +152,7 @@ const login = async (req, res, next) => {
     partner = await User.findOne({ email: existingUser.partner }).populate(
       "todos"
     );
-  } catch (err) {
-    const error = new HttpError(
-      "Issues with logging in. Please try again.",
-      401
-    );
-    return next(error);
-  }
+  } catch (err) {}
 
   // jwt
   let token;
