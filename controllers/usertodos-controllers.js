@@ -71,7 +71,10 @@ const signup = async (req, res, next) => {
   try {
     hashedPassword = await bcrypt.hash(password, 12);
   } catch (err) {
-    const error = new HttpError("Could not create user. Please try again", 500);
+    const error = new HttpError(
+      "Could not create user. Please try again - 1",
+      500
+    );
     return next(error);
   }
 
@@ -89,7 +92,7 @@ const signup = async (req, res, next) => {
     await newUser.save();
   } catch (error) {
     console.log(error);
-    const err = new HttpError("Signing up failed, please try again", 500);
+    const err = new HttpError("Signing up failed, please try again - 2", 500);
     return next(err);
   }
 
@@ -97,19 +100,22 @@ const signup = async (req, res, next) => {
   let token;
   try {
     token = jwt.sign(
-      { userId: createdUser.id, email: createdUser.email },
+      { userId: newUser.id, email: newUser.email },
       process.env.JWT_KEY,
       { expiresIn: "1h" }
     );
   } catch (err) {
-    const error = new HttpError("Signing up failed, please try again", 500);
+    const error = new HttpError("Signing up failed, please try again - 3", 500);
     return next(error);
   }
 
   res.status(200).json({
     success: true,
-    userId: createdUser.id,
-    email: createdUser.email,
+    partner: null,
+    userId: newUser.id,
+    email: newUser.email,
+    name: newUser.name,
+    image: newUser.image || null,
     token: token
   });
 };
@@ -169,9 +175,11 @@ const login = async (req, res, next) => {
     );
     return next(error);
   }
+  console.log(partner);
 
   res.json({
-    partner: partner || "None",
+    partnerName: partner.name,
+    partnerId: partner._id,
     userId: existingUser.id,
     email: existingUser.email,
     name: existingUser.name,
