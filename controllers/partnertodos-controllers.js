@@ -51,7 +51,6 @@ let DUMMY_PARTNER = [
 const getPartnerById = (req, res, next) => {
   const partnerId = req.params.pid;
   const partner = DUMMY_PARTNER.find(p => p.id === partnerId);
-  console.log(partner);
   if (!partner) {
     return next(new HttpError("Could not find partner", 400));
   }

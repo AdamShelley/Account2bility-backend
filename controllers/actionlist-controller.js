@@ -193,7 +193,6 @@ const actionResponseHandler = async (req, res, next) => {
   const actionId = req.params.aid;
 
   const { actionResponse, partnerId } = req.body;
-  console.log(actionResponse);
   // Check the action response is valid
 
   if (!actionResponse === "accept" || !actionResponse === "reject") {
@@ -301,6 +300,60 @@ const actionResponseHandler = async (req, res, next) => {
   res.status(200).json({ success: true, action: action, todo: todo });
 };
 
+// @DESC    Send a suggested goal to partner
+// @TYPE    PUT
+// @ROUTES  /api/v1/actions/suggest
+// PRIVATE
+const suggestGoal = async (req, res, next) => {
+  const { suggestion, userId, partnerId } = req.body;
+
+  let partner;
+  try {
+    partner = await User.findById(partnerId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find the partner. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  if (!partner) {
+    const error = new HttpError(
+      "Could not find the partner. Please try again",
+      404
+    );
+    return next(error);
+  }
+
+  const createSuggestion = new Action({
+    suggestion: suggestion,
+    creator: mongoose.Types.ObjectId(userId),
+    partner: mongoose.Types.ObjectId(partner._id),
+    response: "",
+    action: "suggestion"
+  });
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await createSuggestion.save({ session: sess });
+    await partner.save({ session: sess });
+    partner.actions.push(createSuggestion);
+    await partner.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError(
+      "Creating suggestion failed, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({ partner: partner });
+};
+
 // @DESC    Cleanup actions
 // @TYPE    DELETE
 // @ROUTES  /api/v1/actions/null
@@ -330,3 +383,4 @@ exports.getGoalByActionId = getGoalByActionId;
 exports.createAction = createAction;
 exports.actionResponseHandler = actionResponseHandler;
 exports.deleteNullActions = deleteNullActions;
+exports.suggestGoal = suggestGoal;

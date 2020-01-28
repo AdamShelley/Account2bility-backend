@@ -5,8 +5,12 @@ const Schema = mongoose.Schema;
 const actionSchema = new Schema({
   todoId: {
     type: mongoose.Types.ObjectId,
-    required: true,
+    required: false,
     ref: "Todo"
+  },
+  suggestion: {
+    type: String,
+    required: false
   },
   action: {
     type: String,

@@ -11,10 +11,12 @@ const Todo = require("../models/todo");
 const getAllHistoricalItems = async (req, res, next) => {
   const userId = req.params.uid;
 
+  console.log(userId);
   let user;
   try {
     user = await User.findById(userId).populate("history");
   } catch (err) {
+    console.log(err);
     const error = new HttpError("Could not find the user", 404);
     return next(error);
   }
@@ -23,6 +25,7 @@ const getAllHistoricalItems = async (req, res, next) => {
     const error = new HttpError("Could not find the user", 404);
     return next(error);
   }
+  console.log(user);
 
   res.status(200).json({ userHistory: user.history });
 };

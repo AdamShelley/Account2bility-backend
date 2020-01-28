@@ -12,6 +12,7 @@ router.post("/login", userTodos.login);
 
 router.use(checkAuth);
 
+router.get("/goals/:gid", userTodos.getGoalById);
 router.post("/newgoal", userTodos.newGoal);
 router.patch("/:uid", userTodos.registerPartner);
 router.delete("/goals", userTodos.deleteSingleGoal);

@@ -188,7 +188,6 @@ const registerPartner = async (req, res, next) => {
   const userId = req.params.uid;
 
   const { partnerEmail } = req.body;
-  console.log(partnerEmail);
 
   // Check the partner exists in the DB
   let partner;
@@ -235,16 +234,37 @@ const registerPartner = async (req, res, next) => {
   res.status(200).json({ success: true, data: user });
 };
 
+// @DESC    Get a goal by its ID
+// @TYPE    GET
+// @ROUTES  /api/v1/users/goals/:gid
+// PRIVATE
+
+const getGoalById = async (req, res, next) => {
+  const goalId = req.params.gid;
+  let goal;
+  try {
+    goal = await Todo.findById(goalId);
+  } catch (err) {
+    const error = new HttpError("Could not find a goal with that ID", 404);
+    return next(error);
+  }
+
+  if (!goal) {
+    const error = new HttpError("Could not find a goal with that ID", 404);
+    return next(error);
+  }
+
+  res.status(200).json({ goal: goal });
+};
+
 // @DESC    Create a goal for a user
 // @TYPE    PUT
 // @ROUTES  /api/v1/users/newgoal
 // PRIVATE
 const newGoal = async (req, res, next) => {
-  console.log("New goal route");
   // const userId = req.params.uid;
   const { title, description, deadline, status, creator } = req.body;
 
-  console.log(creator);
   let user;
   try {
     user = await User.findById(creator);
@@ -254,7 +274,6 @@ const newGoal = async (req, res, next) => {
   }
 
   if (!user) {
-    console.log("No user found");
     const error = new HttpError("Could not find user from provided ID", 404);
     return next(error);
   }
@@ -274,9 +293,7 @@ const newGoal = async (req, res, next) => {
     sess.startTransaction();
     await createdGoal.save({ session: sess });
     user.todos.push(createdGoal);
-    console.log("pushing the goal to the user");
     await user.save({ session: sess });
-    console.log("Saving to the DB");
     await sess.commitTransaction();
   } catch (error) {
     console.log(error);
@@ -294,12 +311,10 @@ const newGoal = async (req, res, next) => {
 const getGoalsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
-  console.log(userId);
   // Find the user in the db
   let goals;
   try {
     goals = await Todo.find({ creator: userId, actionReceived: false });
-    console.log(goals);
   } catch (err) {
     const error = new HttpError("Could not find a user. Try again", 500);
     return next(error);
@@ -484,8 +499,6 @@ const deleteAllGoals = async (req, res, next) => {
     return next(new HttpError("Could not find any goals", 402));
   }
 
-  console.log(goals);
-
   res.status(200).json({ success: true, message: "All Goals deleted" });
 };
 
@@ -516,3 +529,4 @@ exports.deleteUser = deleteUser;
 exports.deleteSingleGoal = deleteSingleGoal;
 exports.deleteAllGoals = deleteAllGoals;
 exports.deleteConnection = deleteConnection;
+exports.getGoalById = getGoalById;
